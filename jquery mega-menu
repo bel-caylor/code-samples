@@ -1,0 +1,234 @@
+jQuery(document).ready(function ($) {
+    // Toggle mobile search field
+    $(".mobile-search-button").click(function () {
+        // console.log('Clicked');
+        $(".nav-mobile-search").slideToggle(); // Toggle the search row
+    });
+
+
+    $('form.wp-block-search').submit(function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        // Get the value of the input field
+        const searchInput = $('.wp-block-search__input');
+        const searchValue = searchInput.val();
+
+        // Construct the custom URL with the search value
+        const customURL = `/products/?_search=${encodeURIComponent(searchValue)}`;
+
+        // Redirect to the custom URL
+        window.location.href = customURL;
+    });
+
+    //Import brands for menu
+    $.ajax({
+        url: '/wp-json/custom/v1/get-brands/',
+        method: 'GET',
+        success: function (brands) {
+            var menuHTML = '';
+            
+            //Add Brand Sub Menu
+            brands.forEach(function (brand) {
+                menuHTML += '<li class="has-large-font-size wp-block-navigation-item wp-block-navigation-link submenu submenu-' + brand.slug + '">';
+                menuHTML += '<a class="wp-block-navigation-item__content" href="/products/?_brands=' + brand.slug + '">';
+                menuHTML += '<span class="wp-block-navigation-item__label">' + brand.name + '</span>';
+                menuHTML += '</a>';
+                menuHTML += '<div class="mega-menu menu-' + brand.slug + '"></div>';
+                menuHTML += '</li>';
+
+                // Hover functionality for mouse users
+                $(document).on('mouseenter', '.submenu-' + brand.slug, function() {
+                    showMegaMenu(this);
+                }).on('mouseleave', '.submenu-' + brand.slug, function() {
+                    hideMegaMenu(this);
+                });
+
+                // Accessibility for keyboard users (focus and blur)
+                $(document).on('focusin', '.submenu-' + brand.slug + ' > a', function() {
+                    showMegaMenu($(this).parent()); // We target the parent <li> to show the mega menu
+                }).on('focusout', '.submenu-' + brand.slug + ' > a', function() {
+                    hideMegaMenu($(this).parent()); // We target the parent <li> to hide the mega menu
+                });
+
+            });
+            var menuBrands = $('.wp-block-navigation-item.menu-brands');
+            // console.log(menuBrands);
+            menuBrands[0].childNodes[2].innerHTML = menuHTML;
+
+            // Second loop to fetch the reusable block content by brand name
+            brands.forEach(function (brand) {
+                $.ajax({
+                    url: '/wp-json/custom/v1/get-block-content-by-slug/Menu-' + brand.slug,
+                    method: 'GET',
+                    success: function (blockContent) {
+                        $('.menu-' + brand.slug).html(blockContent);
+                    }
+                });
+            });
+
+            // Mobile Menu
+            var brandsHtml = '<button class="flex accordion-header wp-block-navigation-submenu__toggle" aria-label="Brands submenu" aria-expanded="false">';
+            brandsHtml += '<div >Brands</div>';
+            brandsHtml += '<div class=" wp-block-navigation__submenu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false">';
+            brandsHtml += '<path d="M1.50002 4L6.00002 8L10.5 4" stroke-width="1.5"></path></svg></div></button>';
+            brandsHtml += '<ul class="accordion-content">'
+            // Loop through the brands and append links
+            brands.forEach(function(brand) {
+                // console.log(brand);
+                brandsHtml += '<li class="has-large-font-size wp-block-navigation-item wp-block-navigation-link">';
+                brandsHtml += '<a class="wp-block-navigation-item__content" href="/products/?_brands=' + brand.slug + '">';
+                brandsHtml += '<span class="wp-block-navigation-item__label">' + brand.name + '</span>';
+                brandsHtml += '</a></li>';
+            });
+            brandsHtml += '</ul>';
+            // Inject the constructed HTML to the element with the class 'mobile-menu-brands'
+            $('.nav-mobile .menu-brands').html(brandsHtml);
+
+        },
+        error: function(xhr, status, error) {
+            console.log(error);
+        }
+    });
+
+    //Import categories for desktop menu
+    $.ajax({
+        url: '/wp-json/custom/v1/get-categories/',
+        method: 'GET',
+        success: function (cats) {
+            var menuHTML = '';
+            // console.log(cats);
+            //Add Category Sub Menu
+            cats.forEach(function (cat) {
+                menuHTML += '<li class="has-large-font-size wp-block-navigation-item wp-block-navigation-link submenu submenu-' + cat.slug + '">';
+                menuHTML += '<a class="wp-block-navigation-item__content" href="/products/?_categories_product=' + cat.slug + '">';
+                menuHTML += '<span class="wp-block-navigation-item__label">' + cat.name + '</span>';
+                menuHTML += '</a>';
+                menuHTML += '<div class="mega-menu broadmenu menu-' + cat.slug + '"></div>';
+                menuHTML += '</li>';
+            });
+            var menuCats = $('.wp-block-navigation-item.menu-products');
+            menuCats[0].childNodes[2].innerHTML = menuHTML;
+
+
+
+            //Add Category Broad Menu
+            cats.forEach(function (cat) {
+                menuHTML = '<ul>';
+                cat.children.forEach(function (child) {
+                    // console.log(child);
+                    menuHTML += '<li class="has-large-font-size wp-block-navigation-item wp-block-navigation-link broadmenu-' + child.slug + '">';
+                    menuHTML += '<a class="wp-block-navigation-item__content" href="/products/?_categories_product=' + child.slug + '">';
+                    menuHTML += '<span class="wp-block-navigation-item__label">' + child.name + '</span>';
+                    menuHTML += '</a>';
+
+                    // Hover functionality for mouse users
+                    $(document).on('mouseenter', '.submenu-' + cat.slug, function() {
+                        showMegaMenu(this);
+                    });
+                    $(document).on('mouseleave', '.submenu-' + cat.slug, function() {
+                        hideMegaMenu(this);
+                    });
+                    // Accessibility for keyboard users (focus and blur)
+                    $('.submenu-' + cat.slug).on('focusin', function() {
+                        showMegaMenu(this);
+                    });
+                    $('.submenu-' + cat.slug).on('focusout', function() {
+                        hideMegaMenu(this);
+                    });
+                    // Check if child has grandchildren and append them
+                    if(child.grandchildren && child.grandchildren.length > 0) {
+                        // console.log('Grandchild');
+                        menuHTML += '<ul class="sublist">';
+                        
+                        child.grandchildren.forEach(function(grandchild) {
+                            menuHTML += '<li class="has-medium-font-size text-gray-600 wp-block-navigation-link submenu submenu-' + grandchild.slug + '">';
+                            menuHTML += '<a class="wp-block-navigation-item__content" href="/products/?_categories_product=' + grandchild.slug + '">';
+                            menuHTML += '<span class="wp-block-navigation-item__label">' + grandchild.name + '</span>';
+                            menuHTML += '</a></li>';
+                        });
+                        
+                        menuHTML += '</ul>';
+                    }
+        
+                    menuHTML += '</li>';
+                });
+                menuHTML += '</ul>';
+                $('.menu-' + cat.slug).html(menuHTML);
+                // menu = $('.wp-block-navigation-item.menu-' + cat.slug);
+                // menu[0].childNodes[2].innerHTML = menuHTML;
+            });
+
+            // Mobile Menu
+            var catsHtml = '<button class="flex accordion-header wp-block-navigation-submenu__toggle" aria-label="Products submenu" aria-expanded="false">';
+            catsHtml += '<div>Products</div>';
+            catsHtml += '<div class=" wp-block-navigation__submenu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false">';
+            catsHtml += '<path d="M1.50002 4L6.00002 8L10.5 4" stroke-width="1.5"></path></svg></div></button>';
+            catsHtml += '<ul class="accordion-content">'
+            // Loop through the brands and append links
+            cats.forEach(function(cat) {
+                // console.log(cat);
+                catsHtml += '<li class="has-large-font-size wp-block-navigation-item wp-block-navigation-link">';
+                catsHtml += '<div class="accordion-header"><button class="wp-block-navigation-item__content"><div>' + cat.name + '</div>';
+                catsHtml += '<div class=" wp-block-navigation__submenu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false">';
+                catsHtml += '<path d="M1.50002 4L6.00002 8L10.5 4" stroke-width="1.5"></path></svg></div></button></div>';
+                catsHtml += '<div class="accordion-content">';
+                cat.children.forEach(function (child) {
+                    catsHtml += '<h3><a href="/products/?_categories_product=' + child.slug + '">' + child.name + '</a></h3>';
+                    child.grandchildren.forEach(function(grandchild) {
+                        catsHtml += '<h4><a href="/products/?_categories_product=' + grandchild.slug + '">' + grandchild.name + '</a></h4>';
+                    });
+                });
+                catsHtml += '</div></li>';
+            });
+            catsHtml += '</ul>';
+            // Inject the constructed HTML to the element with the class 'mobile-menu-brands'
+            // console.log(catsHtml);
+            $('.nav-mobile .menu-products').html(catsHtml);
+
+        },
+        error: function(xhr, status, error) {
+            console.log(error);
+        }
+    });
+
+    $('li.open-on-hover-click button').on('click', function(event) {
+
+        // 1. Remove active class and set aria-expanded=false for all other li items
+        $('li.open-on-hover-click').not($(this).closest('li.open-on-hover-click')).removeClass('active')
+            .find('button').attr('aria-expanded', 'false');
+    
+        // 2. Toggle the aria-expanded attribute and active class for the current li item
+        if ($(this).attr('aria-expanded') === 'true') {
+            $(this).attr('aria-expanded', 'false');
+            $(this).closest('li.open-on-hover-click').removeClass('active'); 
+        } else {
+            $(this).attr('aria-expanded', 'true');
+            $(this).closest('li.open-on-hover-click').addClass('active'); 
+        }
+    });
+    
+    
+
+    // Toggle accordion content on header click
+    $(document).on('click', '.accordion-header', function() {
+        $(this).next('.accordion-content').slideToggle('fast');
+
+        // Toggle the aria-expanded attribute for accessibility
+            var expanded = $(this).attr('aria-expanded') === 'true';
+            $(this).attr('aria-expanded', !expanded);
+
+        // Toggle the active-accordion class
+        $(this).toggleClass('accordion-active');
+    });
+
+    // Common function to show the mega menu
+    function showMegaMenu(element) {
+        $(element).find('.mega-menu').addClass('mega-menu-show');
+    }
+    
+    // Common function to hide the mega menu
+    function hideMegaMenu(element) {
+        $(element).find('.mega-menu').removeClass('mega-menu-show');
+    }
+
+});
