@@ -1,0 +1,130 @@
+/**
+ * Get data for menus.
+ *
+ * Retrieves data for building menus, including brands and categories.
+ *
+ * @return WP_REST_Response The menu data.
+ */
+function get_menu_data() {
+	$brands     = get_brands_taxonomy();
+	$categories = get_categories_taxonomy();
+
+	return rest_ensure_response(
+		array(
+			'brands'     => $brands->data,
+			'categories' => $categories->data,
+		)
+	);
+}
+
+// Register REST API route for menu data retrieval.
+add_action(
+	'rest_api_init',
+	function () {
+		register_rest_route(
+			'custom/v1',
+			'/get-menu-data/',
+			array(
+				'methods'  => 'GET',
+				'callback' => 'get_menu_data',
+			)
+		);
+	}
+);
+
+
+/**
+ * Fetch brands for the menu.
+ *
+ * Retrieves brand taxonomy data for use in menus.
+ *
+ * @return WP_REST_Response The list of brands.
+ */
+function get_brands_taxonomy() {
+	$brands = get_terms(
+		array(
+			'taxonomy'   => 'brand',
+			'hide_empty' => true,
+		)
+	);
+
+	$output = array();
+	foreach ( $brands as $brand ) {
+		$output[] = array(
+			'name' => $brand->name,
+			'slug' => $brand->slug,
+			'link' => get_term_link( $brand ),
+			'menu' => get_reusable_block_content_by_slug( $brand->slug ),
+		);
+	}
+	return rest_ensure_response( $output );
+}
+
+
+/**
+ * Fetch categories for the menu organized hierarchically.
+ *
+ * Retrieves product category taxonomy data for use in menus, organized hierarchically.
+ *
+ * @return WP_REST_Response The list of categories.
+ */
+function get_categories_taxonomy() {
+	$cats = get_terms(
+		array(
+			'taxonomy'   => 'product_cat',
+			'hide_empty' => true,
+			'parent'     => 0,  // Only get top-level categories.
+		)
+	);
+
+	$output = array();
+
+	foreach ( $cats as $cat ) {
+		$children = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'hide_empty' => true,
+				'parent'     => $cat->term_id,  // Get children of this category.
+			)
+		);
+
+		$child_output = array();
+
+		foreach ( $children as $child ) {
+
+			$grandchildren = get_terms(
+				array(
+					'taxonomy'   => 'product_cat',
+					'hide_empty' => true,
+					'parent'     => $child->term_id,  // Get grandchildren of this child.
+				)
+			);
+
+			$grandchild_output = array();
+
+			foreach ( $grandchildren as $grandchild ) {
+				$grandchild_output[] = array(
+					'name' => $grandchild->name,
+					'slug' => $grandchild->slug,
+					'link' => get_term_link( $grandchild ),
+				);
+			}
+
+			$child_output[] = array(
+				'name'          => $child->name,
+				'slug'          => $child->slug,
+				'link'          => get_term_link( $child ),
+				'grandchildren' => $grandchild_output,
+			);
+		}
+
+		$output[] = array(
+			'name'     => $cat->name,
+			'slug'     => $cat->slug,
+			'link'     => get_term_link( $cat ),
+			'children' => $child_output,
+		);
+	}
+
+	return rest_ensure_response( $output );
+}
