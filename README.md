@@ -11,5 +11,5 @@ Complex custom post type filter created with Alpine.js
 See this code.  https://github.com/bel-caylor/new2/tree/prod/wp-content/themes/new2/theme/blocks
 
 # Custom Gutenberg style button
-See this code.  https://github.com/bel-caylor/kadence-child/blob/main/js/sermonBlank.js
+See this code.  https://github.com/bel-caylor/kadence-child/blob/main/js/sermonBlank.js <br>
 Scss https://github.com/bel-caylor/kadence-child/blob/main/scss/sermon-blank.scss
